@@ -75,7 +75,7 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
 
         // 如果显示长格式，则输出更多详细信息
         if (cl) {
-        printf((S_ISDIR(file_stat->st_mode)) ? "d" : "-");
+        printf((S_ISDIR(file_stat->st_mode)) ? "d" : "-");//有哪些权限输出哪些
         printf((file_stat->st_mode & S_IRUSR) ? "r" : "-");
         printf((file_stat->st_mode & S_IWUSR) ? "w" : "-");
         printf((file_stat->st_mode & S_IXUSR) ? "x" : "-");
