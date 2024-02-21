@@ -25,7 +25,11 @@ int compare_ct(const void *a, const void *b, char *dirname) {
     else if (stat_a.st_mtime > stat_b.st_mtime) return 1;
     else return 0;
 }
-void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs) {
+void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs,int c_) {
+    if(c_!=0&&ca==0&&cl==0&&cR==0&&cr==0&&ct==0&&cs==0&&ci==0){
+        printf("该参数不适用\n");
+        return;
+    }
     DIR *dir = opendir(dirname);
     if (dir == NULL) {
         fprintf(stderr, "ls1: cannot open %s\n", dirname);
@@ -90,6 +94,9 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         struct group *grp = getgrgid(file_stat->st_gid);
         printf(" %-8s %-8s", pwd->pw_name, grp->gr_name);
 
+        // 输出链接数
+        printf(" %ld ", (long)file_stat->st_nlink);
+
         // 考虑目录的大小
         if (S_ISDIR(file_stat->st_mode)) {
             printf(" %-10s", "");
@@ -100,7 +107,7 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         // 格式化并打印修改时间
         char time_str[20];
         strftime(time_str, sizeof(time_str), "%b %d %H:%M", localtime(&file_stat->st_mtime));
-        printf(" %s", time_str);
+        printf(" %s ", time_str);
         }
         // 如果显示 inode 号码，则输出 inode
         if (ci) {
@@ -115,7 +122,7 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         // 如果显示递归，且当前项是目录，则递归进入该目录
         if (cR && S_ISDIR(file_stat->st_mode) && strcmp(dir_names[i], ".") != 0 && strcmp(dir_names[i], "..") != 0) {
             printf("\n%s:\n", path);
-            do_ls(path, ca, cl, cR, cr, ct, ci, cs);
+            do_ls(path, ca, cl, cR, cr, ct, ci, cs ,c_);
         }
         free(file_stat);
         free(path);
@@ -149,21 +156,19 @@ int main(int argc, char *argv[]) {
     }
 
     // 如果没有指定目录，默认使用当前目录
-    if (c_ == argc-1) {
-        do_ls(".", ca, cl, cR, cr, ct, ci, cs);
-    }
-    // else if(argc == 2&&argv[1][0] == '-') {
-    //     do_ls(".", ca, cl, cR, cr, ct, ci, cs);
-    // }
+    if (c_ == argc-1) {//只有参数
+        do_ls(".", ca, cl, cR, cr, ct, ci, cs ,c_);
+    }                  
     else {
         // 处理命令行中的每个目录
         for (int i = 1; i < argc; i++) {
             if (argv[i][0] != '-') {
                 printf("%s:\n", argv[i]);
-                do_ls(argv[i], ca, cl, cR, cr, ct, ci, cs);
+                do_ls(argv[i], ca, cl, cR, cr, ct, ci, cs ,c_);
             }
         }
     }
 
     return 0;
 }
+
