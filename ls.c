@@ -6,14 +6,15 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+char *current_dir;
 int compare(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 int compare_ct(const void *a, const void *b, char *dirname) {
-    char path_a[strlen(dirname) + strlen(*(const char **)a) + 2];
-    char path_b[strlen(dirname) + strlen(*(const char **)b) + 2];
-    sprintf(path_a, "%s/%s", dirname, *(const char **)a);
-    sprintf(path_b, "%s/%s", dirname, *(const char **)b);
+    char path_a[strlen(current_dir) + strlen(*(const char **)a) + 2];
+    char path_b[strlen(current_dir) + strlen(*(const char **)b) + 2];
+    sprintf(path_a, "%s/%s", current_dir, *(const char **)a);
+    sprintf(path_b, "%s/%s", current_dir, *(const char **)b);
 
     struct stat stat_a, stat_b;
     if (stat(path_a, &stat_a) == -1 || stat(path_b, &stat_b) == -1) {
@@ -21,8 +22,8 @@ int compare_ct(const void *a, const void *b, char *dirname) {
         exit(EXIT_FAILURE);
     }
 
-    if (stat_a.st_mtime < stat_b.st_mtime) return -1;
-    else if (stat_a.st_mtime > stat_b.st_mtime) return 1;
+    if (stat_a.st_mtime > stat_b.st_mtime) return -1;
+    else if (stat_a.st_mtime < stat_b.st_mtime) return 1;
     else return 0;
 }
 void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs,int c_) {
@@ -30,8 +31,15 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         printf("该参数不适用\n");
         return;
     }
-    DIR *dir = opendir(dirname);
+    DIR *dir;
+    if (strcmp(dirname, "/") == 0) {
+        dir = opendir("/");
+    } else {
+        dir = opendir(dirname);
+    }
+
     if (dir == NULL) {
+        perror("opendir");
         fprintf(stderr, "ls1: cannot open %s\n", dirname);
         return;
     }
@@ -54,9 +62,13 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
             char *temp = dir_names[i];
             dir_names[i] = dir_names[count - i - 1];
             dir_names[count - i - 1] = temp;
+        }
     }
-}
 
+    if (ct) {
+        current_dir = dirname;
+        qsort(dir_names, count, sizeof(char *), compare_ct);
+    }
     // 输出每个文件和目录
     for (int i = 0; i < count; i++) {
         char *path = malloc(strlen(dirname) + strlen(dir_names[i]) + 2); // +2 用于路径分隔符和字符串结尾符
@@ -113,7 +125,6 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         if (ci) {
             printf("%ld ", (long)file_stat->st_ino);
         }
-        if(ct){;}
         // 如果显示大小，则输出文件大小（仅对普通文件有效）
         if (cs && S_ISREG(file_stat->st_mode)) {
             printf("%-10ld ", (long)file_stat->st_blocks);
@@ -121,8 +132,15 @@ void do_ls(char *dirname, int ca, int cl, int cR, int cr, int ct, int ci, int cs
         printf("%s\n", dir_names[i]);
         // 如果显示递归，且当前项是目录，则递归进入该目录
         if (cR && S_ISDIR(file_stat->st_mode) && strcmp(dir_names[i], ".") != 0 && strcmp(dir_names[i], "..") != 0) {
-            printf("\n%s:\n", path);
-            do_ls(path, ca, cl, cR, cr, ct, ci, cs ,c_);
+        char *sub_dir = malloc(strlen(path) + 1);
+        if (sub_dir == NULL) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(sub_dir, path);
+        printf("\n%s:\n", sub_dir);
+        do_ls(sub_dir, ca, cl, cR, cr, ct, ci, cs, c_);
+        free(sub_dir);
         }
         free(file_stat);
         free(path);
@@ -171,4 +189,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
